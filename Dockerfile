@@ -1,5 +1,5 @@
 # Use the official Python image as the base image
-FROM 3.10-slim-buster
+FROM python:3.10-slim-buster
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1

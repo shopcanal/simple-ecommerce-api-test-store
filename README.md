@@ -15,6 +15,24 @@ This project was created almost two years ago. Since then, there is a newer vers
 
 ---
 
+
+# CLAY DOCKER COMMANDS
+
+```bash
+git clone https://shopcanal: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@github.com/shopcanal/simple-ecommerce-api-test-store.git
+
+cd /home/cschubiner/simple-ecommerce-api-test-store
+git pull
+sudo git pull
+sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm_bot --format="{{.ID}}")
+sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm --format="{{.ID}}")
+sudo docker build -t "testecomm_bot" .
+sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm --format="{{.ID}}")
+sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm_bot --format="{{.ID}}")
+sudo docker run -a stdin -a stdout -i -t testecomm_bot
+
+```
+
 # Django E-commerce
 
 This is a very simple e-commerce website built with Django.
