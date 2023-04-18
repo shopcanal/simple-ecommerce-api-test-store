@@ -195,6 +195,8 @@ class CheckoutView(View):
 
                 if payment_option == 'S':
                     return redirect('core:payment', payment_option='stripe')
+                elif payment_option == 'T':
+                    return redirect('core:payment', payment_option='test')
                 elif payment_option == 'P':
                     return redirect('core:payment', payment_option='paypal')
                 else:
