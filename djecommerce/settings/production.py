@@ -1,7 +1,10 @@
 from .base import *
 
-DEBUG = config('DEBUG', cast=bool)
-ALLOWED_HOSTS = ['ip-address', 'www.your-website.com']
+# DEBUG = config('DEBUG', cast=bool)
+# ALLOWED_HOSTS = ['ip-address', 'www.your-website.com']
+DEBUG = True
+ALLOWED_HOSTS = ['*']
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

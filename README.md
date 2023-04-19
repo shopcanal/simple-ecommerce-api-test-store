@@ -29,7 +29,11 @@ sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm --format="{{
 sudo docker build -t "testecomm_bot" .
 sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm --format="{{.ID}}")
 sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm_bot --format="{{.ID}}")
-sudo docker run -a stdin -a stdout -i -t testecomm_bot
+sudo docker run -a stdin -a stdout -p 80:80 -i -t testecomm_bot
+
+sudo docker run -p 80:80 --restart=always -d testecomm_bot
+
+docker run -d -p 80:80 --name django_app testecomm_bot
 
 ```
 
