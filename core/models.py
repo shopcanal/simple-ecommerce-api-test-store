@@ -6,8 +6,9 @@ from django.conf import settings
 from django.db import models
 from django.db.models.options import Options
 from django.shortcuts import reverse
+from django.utils import timezone
 from django_countries.fields import CountryField
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 
 CATEGORY_CHOICES = (("S", "Shirt"), ("SW", "Sport wear"), ("OW", "Outwear"))
@@ -297,6 +298,39 @@ class Order(CanalModel):
         for order_item in self.items.all():
             canal_json["line_items"].append(order_item.transform_to_canal())
         return canal_json
+
+    @classmethod
+    def create_or_update_from_canal_json(self, canal_json: Dict[str, Any]) -> "Order":
+        # Placeholder rn
+        user = settings.AUTH_USER_MODEL.objects.get(email="simon.xie@shopcanal.com")
+        address = Address.objects.get_or_create(
+            street_address=canal_json["shipping_address"]["address1"],
+            apartment_address=canal_json["shipping_address"]["address2"],
+            country=canal_json["shipping_address"]["country"],
+            zip=canal_json["shipping_address"]["zip"],
+            address_type="B",
+            user=user,
+        )
+        order, _ = Order.objects.update_or_create(
+            canal_id=canal_json["id"],
+            defaults={
+                "shipping_address": address,
+                "ordered_date": timezone.now(),
+            },
+        )
+        for line_item_json in canal_json["line_items"]:
+            order_item, _ = OrderItem.objects.update_or_create(
+                canal_id=line_item_json["id"],
+                defaults={
+                    "item": Item.objects.get(
+                        canal_variant_id=line_item_json["variant_id"]
+                    ),
+                    "ordered": True,
+                    "quantity": line_item_json["quantity"],
+                    "user": user,
+                },
+            )
+        return order
 
 
 class Address(models.Model):
