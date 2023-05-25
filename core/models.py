@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 from uuid import uuid4
 
+from django.apps import apps
 from django.db.models.signals import post_save
 from django.conf import settings
 from django.db import models
@@ -302,10 +303,10 @@ class Order(CanalModel):
     @classmethod
     def create_or_update_from_canal_json(self, canal_json: Dict[str, Any]) -> "Order":
         # Placeholder rn
-        user = settings.AUTH_USER_MODEL.objects.get(email="simon.xie@shopcanal.com")
-        address = Address.objects.get_or_create(
+        user = apps.get_model(*settings.AUTH_USER_MODEL.split('.')).objects.get(email="simon.xie@shopcanal.com")
+        address, _ = Address.objects.get_or_create(
             street_address=canal_json["shipping_address"]["address1"],
-            apartment_address=canal_json["shipping_address"]["address2"],
+            apartment_address=canal_json["shipping_address"]["address2"] or '',
             country=canal_json["shipping_address"]["country"],
             zip=canal_json["shipping_address"]["zip"],
             address_type="B",
@@ -316,6 +317,15 @@ class Order(CanalModel):
             defaults={
                 "shipping_address": address,
                 "ordered_date": timezone.now(),
+                'user': user,
+            },
+        )
+        order, _ = Order.objects.update_or_create(
+            canal_id=canal_json["id"],
+            defaults={
+                "shipping_address": address,
+                "ordered_date": timezone.now(),
+                'user': user,
             },
         )
         for line_item_json in canal_json["line_items"]:
@@ -330,6 +340,7 @@ class Order(CanalModel):
                     "user": user,
                 },
             )
+            order.items.add(order_item)
         return order
 
 
