@@ -1,5 +1,7 @@
+import json
 import random
 import string
+from typing import Any
 
 import stripe
 from django.conf import settings
@@ -7,6 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
@@ -22,6 +25,7 @@ from .models import (
     Coupon,
     Refund,
     UserProfile,
+    CANAL_WEBHOOK_TOPIC_MODEL,
 )
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -496,3 +500,12 @@ class RequestRefundView(View):
             except ObjectDoesNotExist:
                 messages.info(self.request, "This order does not exist.")
                 return redirect("core:request-refund")
+
+
+class CanalWebhookView(View):
+    def post(self, *args: Any, **kwargs: Any) -> HttpResponse:
+        model = CANAL_WEBHOOK_TOPIC_MODEL[self.request.headers["X-Canal-Topic"]]
+        obj = model.create_or_update_from_canal_json(
+            canal_json=json.loads(self.request.body.decode())
+        )
+        return HttpResponse({})

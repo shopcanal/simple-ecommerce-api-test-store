@@ -1,9 +1,13 @@
+from typing import Any, Dict, List
+from uuid import uuid4
+
 from django.db.models.signals import post_save
 from django.conf import settings
 from django.db import models
-from django.db.models import Sum
+from django.db.models.options import Options
 from django.shortcuts import reverse
 from django_countries.fields import CountryField
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 
 
 CATEGORY_CHOICES = (("S", "Shirt"), ("SW", "Sport wear"), ("OW", "Outwear"))
@@ -15,6 +19,74 @@ ADDRESS_CHOICES = (
     ("S", "Shipping"),
 )
 
+CANAL_WEBHOOK_TOPIC_MODEL: Dict[str, "CanalModel"] = {}
+
+
+def register_canal_webhook_model(topics: List[str]) -> "CanalModel":
+    def decorator(m: "CanalModel") -> "CanalModel":
+        for topic in topics:
+            CANAL_WEBHOOK_TOPIC_MODEL[topic] = m
+        return m
+
+    return decorator
+
+
+class BaseModel(models.Model):
+    """
+    Base model that includes default created / updated timestamps.
+    """
+
+    id = models.UUIDField(editable=False, primary_key=True, default=uuid4)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class CanalModel(BaseModel):
+    internal_to_canal_mapping: Dict[str, str]
+    _meta: Options
+    canal_id = models.CharField(null=True, blank=True, max_length=34)
+
+    def transform_to_canal(self) -> Dict[str, Any]:
+        canal_json = {}
+        for internal_field, canal_field in self.internal_to_canal_mapping.items():
+            attributes = internal_field.split("__")
+            instance = self
+            while len(attributes) > 1:
+                instance = getattr(instance, attributes.pop(0))
+            final_attribute = attributes.pop(0)
+            if isinstance(instance, models.Model):
+                field = instance._meta.get_field(final_attribute)
+                if isinstance(field, str):
+                    value = getattr(instance, field)
+                elif isinstance(field, models.ImageField):
+                    try:
+                        value = getattr(instance, field.name).url
+                    except ValueError:
+                        value = None
+                    # TODO validate that the url is an actual url
+                elif isinstance(field, models.Field):
+                    value = getattr(instance, field.name)
+                else:
+                    continue
+            else:
+                value = getattr(instance, final_attribute)
+            canal_json[canal_field] = value
+        if self.canal_id is not None:
+            canal_json["id"] = self.canal_id
+        return canal_json
+
+    @classmethod
+    def create_or_update_from_canal_json(
+        cls, canal_json: Dict[str, Any]
+    ) -> "CanalModel":
+        ...
+
+    class Meta:
+        abstract = True
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -25,7 +97,8 @@ class UserProfile(models.Model):
         return self.user.username
 
 
-class Item(models.Model):
+@register_canal_webhook_model(topics=["product/create", "product/update"])
+class Item(CanalModel):
     title = models.CharField(max_length=100)
     price = models.FloatField()
     discount_price = models.FloatField(blank=True, null=True)
@@ -34,6 +107,16 @@ class Item(models.Model):
     slug = models.SlugField()
     description = models.TextField()
     image = models.ImageField()
+    canal_variant_id = models.CharField(
+        blank=True, null=True, max_length=34, unique=True, db_index=True
+    )
+    added_from_canal = models.BooleanField(default=False)
+
+    internal_to_canal_mapping = {
+        "title": "title",
+        "description": "body_html",
+        "image": "image_src",
+    }
 
     def __str__(self):
         return self.title
@@ -47,12 +130,62 @@ class Item(models.Model):
     def get_remove_from_cart_url(self):
         return reverse("core:remove-from-cart", kwargs={"slug": self.slug})
 
+    def transform_to_canal(self) -> Dict[str, Any]:
+        canal_json = super().transform_to_canal()
+        canal_json.update(
+            {"is_listed": True, "status": "active", "variants": self.variants_json}
+        )
+        return canal_json
 
-class OrderItem(models.Model):
+    @property
+    def variant_json(self) -> Dict[str, Any]:
+        variant_json = {
+            "price": str(self.price),
+            "title": self.category,
+            "option1": self.category,
+            "inventory_quantity": 10,
+            "inventory_policy": "continue",
+        }
+        if self.canal_variant_id is not None:
+            variant_json["id"] = self.canal_variant_id
+        return variant_json
+
+    @property
+    def variants_json(self) -> List[Dict[str, Any]]:
+        return [self.variant_json]
+
+    @classmethod
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=1, max=3),
+    )
+    def create_or_update_from_canal_json(cls, canal_json: Dict[str, Any]) -> "Item":
+        # Only going to push the first variant for now cause this website doesn't support variants
+        item, _ = Item.objects.update_or_create(
+            canal_id=canal_json["id"],
+            defaults={
+                "added_from_canal": True,
+                "price": float(canal_json["variants"][0]["price"]),
+                "canal_variant_id": canal_json["variants"][0]["id"],
+                "description": canal_json["body_html"],
+                "image": canal_json["image_src"],
+                "title": canal_json["title"],
+                "slug": canal_json["title"].lower(),
+            },
+        )
+        return item
+
+
+class OrderItem(CanalModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     ordered = models.BooleanField(default=False)
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
     quantity = models.IntegerField(default=1)
+
+    internal_to_canal_mapping = {
+        "item__canal_variant_id": "variant_id",
+        "quantity": "quantity",
+    }
 
     def __str__(self):
         return f"{self.quantity} of {self.item.title}"
@@ -72,7 +205,8 @@ class OrderItem(models.Model):
         return self.get_total_item_price()
 
 
-class Order(models.Model):
+@register_canal_webhook_model(topics=["order/create", "order/update"])
+class Order(CanalModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     ref_code = models.CharField(max_length=20, blank=True, null=True)
     items = models.ManyToManyField(OrderItem)
@@ -104,6 +238,8 @@ class Order(models.Model):
     refund_requested = models.BooleanField(default=False)
     refund_granted = models.BooleanField(default=False)
 
+    internal_to_canal_mapping = {}
+
     """
     1. Item added to cart
     2. Adding a billing address
@@ -125,6 +261,42 @@ class Order(models.Model):
         if self.coupon:
             total -= self.coupon.amount
         return total
+
+    def transform_to_canal(self) -> Dict[str, Any]:
+        canal_json = super().transform_to_canal()
+        if self.shipping_address is None:
+            raise Exception("no shipping address!")
+        name = f"{self.shipping_address.user.first_name} {self.shipping_address.user.last_name}"
+        canal_json.update(
+            {
+                "shipping_address": {
+                    "name": name.strip() or "Simon Xie",
+                    "address1": self.shipping_address.street_address,
+                    "city": "San Francisco",  # No city :madge:
+                    # All of these are placeholders for now
+                    "province": "California",
+                    "province_code": "CA",
+                    "country": "United States",
+                    "country_code": str(self.shipping_address.country),
+                    "zip": self.shipping_address.zip,
+                    "phone": "8322222222",
+                },
+                "customer": {
+                    "email": "simon.xie@shopcanal.com",
+                    "first_name": "Simon",
+                    "last_name": "Xie",
+                },
+            }
+        )
+        if self.shipping_address.apartment_address:
+            canal_json["shipping_address"][
+                "address2"
+            ] = self.shipping_address.apartment_address
+        canal_json["line_items"] = []
+        order_item: OrderItem
+        for order_item in self.items.all():
+            canal_json["line_items"].append(order_item.transform_to_canal())
+        return canal_json
 
 
 class Address(models.Model):
@@ -163,7 +335,7 @@ class Coupon(models.Model):
         return self.code
 
 
-class Refund(models.Model):
+class Refund(CanalModel):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     reason = models.TextField()
     accepted = models.BooleanField(default=False)
