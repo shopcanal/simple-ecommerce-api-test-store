@@ -109,7 +109,6 @@ def order_post_save_receiver(
         response_json = response.json()
         Order = apps.get_model("core", "Order")
         Order.objects.filter(id=instance.id).update(canal_id=response_json["id"])
-        print(response.json())
         for line_item in response.json()["line_items"]:
             instance.items.all().filter(
                 item__canal_variant_id=line_item["variant_id"]
