@@ -6,15 +6,10 @@ from typing import Any, Type, TYPE_CHECKING
 from django.apps import apps
 from django.conf import settings
 
+from core.constants import SHOPCANAL_DEFAULT_HEADERS
+
 if TYPE_CHECKING:
     from core.models import Item, Order
-
-SHOPCANAL_DEFAULT_HEADERS = {
-    "accept": "application/json",
-    "content-type": "application/json",
-    "X-CANAL-APP-ID": settings.CANAL_APP_ID,
-    "X-CANAL-APP-TOKEN": settings.CANAL_ACCESS_TOKEN,
-}
 
 
 def raise_response_status(response: Response):
@@ -22,6 +17,7 @@ def raise_response_status(response: Response):
         response.raise_for_status()
     except Exception as e:
         print(response.text)
+        print(response.json())
         raise type(e)(response.text) from e
 
 

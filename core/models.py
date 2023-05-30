@@ -1,3 +1,6 @@
+import os
+import requests
+from random import randint
 from typing import Any, Dict, List
 from uuid import uuid4
 
@@ -8,8 +11,12 @@ from django.db import models
 from django.db.models.options import Options
 from django.shortcuts import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django_countries.fields import CountryField
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+from core.constants import SHOPCANAL_DEFAULT_HEADERS
+from core.signals import raise_response_status
 
 
 CATEGORY_CHOICES = (("S", "Shirt"), ("SW", "Sport wear"), ("OW", "Outwear"))
@@ -75,6 +82,9 @@ class CanalModel(BaseModel):
                     continue
             else:
                 value = getattr(instance, final_attribute)
+            if isinstance(canal_field, tuple):
+                value = canal_field[0](value)
+                canal_field = canal_field[1]
             canal_json[canal_field] = value
         if self.canal_id is not None:
             canal_json["id"] = self.canal_id
@@ -345,6 +355,36 @@ class Order(CanalModel):
             order.items.add(order_item)
         return order
 
+    def fulfill(self) -> "Fulfillment":
+        tracking_number = randint(1000000000, 9999999999)
+        fulfillment = Fulfillment.objects.create(
+            name="Placeholder Name",
+            order=self,
+            status="success",
+            shipment_status="delivered",
+            service="Simon's Fulfillment Serivce",
+            tracking_company="UPS",
+            tracking_number=str(tracking_number),
+            tracking_url=f"https://www.ups.com/track?loc=en_US&tracknum={tracking_number}",
+        )
+        for order_item in self.items.all():
+            FulfillmentLineItem.objects.create(
+                fulfillment=fulfillment,
+                order_item=order_item,
+                quantity=order_item.quantity,
+            )
+        create_fulfillment_url = os.path.join(
+            settings.SHOPCANAL_API_BASE_URL, "fulfillments/"
+        )
+        response = requests.post(
+            create_fulfillment_url,
+            json=fulfillment.transform_to_canal(),
+            headers=SHOPCANAL_DEFAULT_HEADERS,
+        )
+        raise_response_status(response)
+        fulfillment.canal_id = response.json()["id"]
+        fulfillment.save()
+
 
 class Address(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -390,6 +430,59 @@ class Refund(CanalModel):
 
     def __str__(self):
         return f"{self.pk}"
+
+
+FULFILLMENT_STATUSES = (
+    ("P", "pending"),
+    ("O", "open"),
+    ("S", "success"),
+    ("C", "cancelled"),
+    ("E", "error"),
+    ("F", "failure"),
+)
+SHIPMENT_STATUSES = (
+    ("confirmed", "confirmed"),
+    ("in_transit", "in_transit"),
+    ("out_for_delivery", "out_for_delivery"),
+    ("delivered", "delivered"),
+    ("failure", "failure"),
+)
+
+
+class Fulfillment(CanalModel):
+    internal_to_canal_mapping = {
+        "name": "name",
+        "order__canal_id": "order_id",
+        "status": "status",
+        "shipment_status": "shipment_status",
+        "service": "service",
+        "tracking_company": "tracking_company",
+        "tracking_number": (lambda x: [x], "tracking_numbers"),
+        "tracking_url": (lambda x: [x], "tracking_urls"),
+    }
+    name = models.CharField(max_length=100)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    status = models.CharField(choices=FULFILLMENT_STATUSES, max_length=100)
+    shipment_status = models.CharField(choices=SHIPMENT_STATUSES, max_length=100)
+    service = models.CharField(max_length=100)
+    tracking_company = models.CharField(max_length=100)
+    tracking_number = models.CharField(max_length=100)
+    tracking_url = models.CharField(max_length=500)
+
+    def transform_to_canal(self) -> Dict[str, Any]:
+        canal_json = super().transform_to_canal()
+        canal_json["line_items"] = []
+        for item in self.fulfillmentlineitem_set.all():
+            canal_json["line_items"].append(
+                {"id": item.order_item.canal_id, "quantity": item.quantity}
+            )
+        return canal_json
+
+
+class FulfillmentLineItem(BaseModel):
+    fulfillment = models.ForeignKey(Fulfillment, on_delete=models.CASCADE)
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
 
 
 def userprofile_receiver(sender, instance, created, *args, **kwargs):
