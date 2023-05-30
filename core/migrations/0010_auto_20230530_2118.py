@@ -6,13 +6,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0009_auto_20230530_2115'),
+        ("core", "0009_auto_20230530_2115"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='fulfillment',
-            name='shipment_status',
-            field=models.CharField(choices=[('confirmed', 'confirmed'), ('in_transit', 'in_transit'), ('out_for_delivery', 'out_for_delivery'), ('delivered', 'delivered'), ('failure', 'failure')], max_length=100, null=True),
+            model_name="fulfillment",
+            name="shipment_status",
+            field=models.CharField(
+                choices=[
+                    ("confirmed", "confirmed"),
+                    ("in_transit", "in_transit"),
+                    ("out_for_delivery", "out_for_delivery"),
+                    ("delivered", "delivered"),
+                    ("failure", "failure"),
+                ],
+                max_length=100,
+                null=True,
+            ),
         ),
     ]
