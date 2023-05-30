@@ -56,7 +56,7 @@ class BaseModel(models.Model):
 class CanalModel(BaseModel):
     internal_to_canal_mapping: Dict[str, str]
     _meta: Options
-    canal_id = models.CharField(null=True, blank=True, max_length=34)
+    canal_id = models.CharField(null=True, blank=True, max_length=34, db_index=True)
 
     def transform_to_canal(self) -> Dict[str, Any]:
         canal_json = {}
@@ -332,14 +332,6 @@ class Order(CanalModel):
                 "user": user,
             },
         )
-        order, _ = Order.objects.update_or_create(
-            canal_id=canal_json["id"],
-            defaults={
-                "shipping_address": address,
-                "ordered_date": timezone.now(),
-                "user": user,
-            },
-        )
         for line_item_json in canal_json["line_items"]:
             order_item, _ = OrderItem.objects.update_or_create(
                 canal_id=line_item_json["id"],
@@ -449,6 +441,7 @@ SHIPMENT_STATUSES = (
 )
 
 
+@register_canal_webhook_model(topics=["fulfillment/create", "fulfillment/update"])
 class Fulfillment(CanalModel):
     internal_to_canal_mapping = {
         "name": "name",
@@ -463,7 +456,7 @@ class Fulfillment(CanalModel):
     name = models.CharField(max_length=100)
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     status = models.CharField(choices=FULFILLMENT_STATUSES, max_length=100)
-    shipment_status = models.CharField(choices=SHIPMENT_STATUSES, max_length=100)
+    shipment_status = models.CharField(choices=SHIPMENT_STATUSES, max_length=100, null=True)
     service = models.CharField(max_length=100)
     tracking_company = models.CharField(max_length=100)
     tracking_number = models.CharField(max_length=100)
@@ -477,6 +470,29 @@ class Fulfillment(CanalModel):
                 {"id": item.order_item.canal_id, "quantity": item.quantity}
             )
         return canal_json
+
+    @classmethod
+    def create_or_update_from_canal_json(cls, canal_json: Dict[str, Any]) -> CanalModel:
+        f = Fulfillment.objects.update_or_create(
+            canal_id=canal_json["id"],
+            defaults={
+                "name": canal_json["name"],
+                "order": Order.objects.get(canal_id=canal_json['order_id']),
+                "status": canal_json["status"],
+                "shipment_status": canal_json["shipment_status"],
+                "service": canal_json["service"],
+                "tracking_company": canal_json["tracking_company"],
+                "tracking_number": canal_json["tracking_numbers"][0],
+                "tracking_url": canal_json["tracking_urls"][0],
+            },
+        )
+        for line_item_json in canal_json["line_items"]:
+            order_item = OrderItem.objects.get(canal_id=line_item_json["id"])
+            FulfillmentLineItem.objects.update_or_create(
+                order_item=order_item,
+                fulfillment=f,
+                defaults={"quantity": line_item_json["quantity"]},
+            )
 
 
 class FulfillmentLineItem(BaseModel):
