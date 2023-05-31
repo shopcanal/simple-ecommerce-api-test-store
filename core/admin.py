@@ -1,7 +1,9 @@
 from django.contrib import admin
+from django.db.models import Exists, OuterRef, QuerySet
 
 from .models import (
     Item,
+    Fulfillment,
     OrderItem,
     Order,
     Payment,
@@ -47,7 +49,13 @@ class OrderAdmin(admin.ModelAdmin):
         "refund_granted",
     ]
     search_fields = ["user__username", "ref_code"]
-    actions = [make_refund_accepted]
+    actions = [make_refund_accepted, "fulfill"]
+
+    def fulfill(self, request, queryset: QuerySet):
+        for o in queryset.exclude(
+            Exists(Fulfillment.objects.filter(order_id=OuterRef("pk")))
+        ):
+            o.fulfill()
 
 
 class AddressAdmin(admin.ModelAdmin):
