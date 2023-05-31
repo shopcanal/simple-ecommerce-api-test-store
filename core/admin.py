@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.db.models import Exists, OuterRef, QuerySet
+from django.db.models import QuerySet
 
 from .models import (
     Item,
@@ -23,6 +23,8 @@ make_refund_accepted.short_description = "Update orders to refund granted"
 
 class OrderAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
+        "created_at",
         "user",
         "ordered",
         "being_delivered",
@@ -52,9 +54,10 @@ class OrderAdmin(admin.ModelAdmin):
     actions = [make_refund_accepted, "fulfill"]
 
     def fulfill(self, request, queryset: QuerySet):
-        for o in queryset.exclude(
-            Exists(Fulfillment.objects.filter(order_id=OuterRef("pk")))
-        ):
+        o: Order
+        for o in queryset:
+            if o.fulfillment_set.exists():
+                continue
             o.fulfill()
 
 
