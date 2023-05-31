@@ -476,7 +476,7 @@ class Fulfillment(CanalModel):
 
     @classmethod
     def create_or_update_from_canal_json(cls, canal_json: Dict[str, Any]) -> CanalModel:
-        f = Fulfillment.objects.update_or_create(
+        f, _ = Fulfillment.objects.update_or_create(
             canal_id=canal_json["id"],
             defaults={
                 "name": canal_json["name"],
