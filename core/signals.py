@@ -110,15 +110,16 @@ def order_post_save_receiver(
                 item__canal_variant_id=line_item["variant_id"]
             ).update(canal_id=line_item["id"])
 
-    else:
-        # PUT /orders/
-        update_order_url = (
-            os.path.join(settings.SHOPCANAL_API_BASE_URL, "orders", str(instance.id))
-            + "/"
-        )
-        response = requests.put(
-            update_order_url,
-            json=instance.transform_to_canal(),
-            headers=SHOPCANAL_DEFAULT_HEADERS,
-        )
-        raise_response_status(response)
+    # update orders isn't supported
+    # else:
+    #     # PUT /orders/{id}/
+    #     update_order_url = (
+    #         os.path.join(settings.SHOPCANAL_API_BASE_URL, "orders", str(instance.id))
+    #         + "/"
+    #     )
+    #     response = requests.put(
+    #         update_order_url,
+    #         json=instance.transform_to_canal(),
+    #         headers=SHOPCANAL_DEFAULT_HEADERS,
+    #     )
+    #     raise_response_status(response)

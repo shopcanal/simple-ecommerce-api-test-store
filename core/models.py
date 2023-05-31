@@ -330,6 +330,7 @@ class Order(CanalModel):
                 "shipping_address": address,
                 "ordered_date": timezone.now(),
                 "user": user,
+                "ordered": True,
             },
         )
         for line_item_json in canal_json["line_items"]:
@@ -488,7 +489,7 @@ class Fulfillment(CanalModel):
                 "tracking_url": canal_json["tracking_urls"][0],
             },
         )
-        for line_item_json in canal_json["line_items"]:
+        for line_item_json in canal_json.get("line_items", []):
             order_item = OrderItem.objects.get(canal_id=line_item_json["id"])
             FulfillmentLineItem.objects.update_or_create(
                 order_item=order_item,

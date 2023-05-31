@@ -356,11 +356,20 @@ class OrderSummaryView(LoginRequiredMixin, View):
     def get(self, *args, **kwargs):
         try:
             order = Order.objects.get(user=self.request.user, ordered=False)
-            context = {"object": order}
-            return render(self.request, "order_summary.html", context)
         except ObjectDoesNotExist:
             messages.warning(self.request, "You do not have an active order")
             return redirect("/")
+        except Order.MultipleObjectsReturned:
+            order = (
+                Order.objects.filter(user=self.request.user, ordered=False)
+                .order_by("-created_at")
+                .first()
+            )
+            Order.objects.filter(user=self.request.user, ordered=False).exclude(
+                id=order.id
+            ).delete()
+        context = {"object": order}
+        return render(self.request, "order_summary.html", context)
 
 
 class ItemDetailView(DetailView):
@@ -505,7 +514,8 @@ class RequestRefundView(View):
 class CanalWebhookView(View):
     def post(self, *args: Any, **kwargs: Any) -> HttpResponse:
         model = CANAL_WEBHOOK_TOPIC_MODEL[self.request.headers["X-Canal-Topic"]]
-        obj = model.create_or_update_from_canal_json(
-            canal_json=json.loads(self.request.body.decode())
-        )
+        print(self.request.headers["X-Canal-Topic"])
+        canal_json = json.loads(self.request.body.decode())
+        print(canal_json)
+        obj = model.create_or_update_from_canal_json(canal_json=canal_json)
         return HttpResponse({})
