@@ -21,18 +21,9 @@ This project was created almost two years ago. Since then, there is a newer vers
 ```bash
 
 cd /home/cschubiner/simple-ecommerce-api-test-store
-git pull
-sudo git pull
-sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm_bot --format="{{.ID}}")
-sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm --format="{{.ID}}")
-sudo docker build -t "testecomm_bot" .
-sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm --format="{{.ID}}")
-sudo docker stop $(sudo docker ps -a -q --filter ancestor=testecomm_bot --format="{{.ID}}")
-sudo docker run -a stdin -a stdout -p 80:80 -i -t testecomm_bot
-
-sudo docker run -p 80:80 --restart=always -d testecomm_bot
-
-docker run -d -p 80:80 --name django_app testecomm_bot
+docker stop $(docker ps -a -q --filter ancestor=testecomm_bot --format="{{.ID}}")
+docker build -t "testecomm_bot" .
+docker run  --mount type=volume,src=test-api-store-db,target=/etc/test-api-store-db -p 80:80 --restart=always -d testecomm_bot 
 
 ```
 
