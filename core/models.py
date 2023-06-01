@@ -120,7 +120,7 @@ class Item(CanalModel):
     description = models.TextField()
     image = models.ImageField()
     canal_variant_id = models.CharField(
-        blank=True, null=True, max_length=34, unique=True, db_index=True
+        blank=True, null=True, max_length=36, unique=True, db_index=True
     )
     added_from_canal = models.BooleanField(default=False)
 
