@@ -1,7 +1,7 @@
 import os
 import requests
 from requests.models import Response
-from typing import Any, Type, TYPE_CHECKING
+from typing import Any, Type, TYPE_CHECKING, Callable
 
 from django.apps import apps
 from django.conf import settings
@@ -12,6 +12,17 @@ if TYPE_CHECKING:
     from core.models import Item, Order
 
 
+def try_catch_wrapper(f: Callable) -> Any:
+    def decorator(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return f(*args, **kwargs)
+        except Exception:
+            pass
+
+    return decorator
+
+
+@try_catch_wrapper
 def raise_response_status(response: Response):
     try:
         response.raise_for_status()
@@ -21,6 +32,7 @@ def raise_response_status(response: Response):
         raise type(e)(response.text) from e
 
 
+@try_catch_wrapper
 def item_post_save_receiver(
     sender: Type["Item"], instance: "Item", created: bool, **kwargs: Any
 ) -> None:
@@ -72,6 +84,7 @@ def item_post_save_receiver(
             raise_response_status(response)
 
 
+@try_catch_wrapper
 def item_post_delete_receiver(
     sender: Type["Item"], instance: "Item", **kwargs: Any
 ) -> None:
@@ -88,6 +101,7 @@ def item_post_delete_receiver(
     raise_response_status(response)
 
 
+@try_catch_wrapper
 def order_post_save_receiver(
     sender: Type["Order"], instance: "Order", created: bool, **kwargs: Any
 ) -> None:
