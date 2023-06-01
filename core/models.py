@@ -56,7 +56,7 @@ class BaseModel(models.Model):
 class CanalModel(BaseModel):
     internal_to_canal_mapping: Dict[str, str]
     _meta: Options
-    canal_id = models.CharField(null=True, blank=True, max_length=34, db_index=True)
+    canal_id = models.CharField(null=True, blank=True, max_length=36, db_index=True)
 
     def transform_to_canal(self) -> Dict[str, Any]:
         canal_json = {}
