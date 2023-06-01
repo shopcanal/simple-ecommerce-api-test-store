@@ -316,14 +316,16 @@ class Order(CanalModel):
         user = apps.get_model(*settings.AUTH_USER_MODEL.split(".")).objects.get(
             email="simon.xie@shopcanal.com"
         )
-        address, _ = Address.objects.get_or_create(
-            street_address=canal_json["shipping_address"]["address1"],
-            apartment_address=canal_json["shipping_address"]["address2"] or "",
-            country=canal_json["shipping_address"]["country"],
-            zip=canal_json["shipping_address"]["zip"],
-            address_type="B",
-            user=user,
-        )
+        address = None
+        if "shipping_address" in canal_json:
+            address, _ = Address.objects.get_or_create(
+                street_address=canal_json["shipping_address"]["address1"],
+                apartment_address=canal_json["shipping_address"]["address2"] or "",
+                country=canal_json["shipping_address"]["country"],
+                zip=canal_json["shipping_address"]["zip"],
+                address_type="B",
+                user=user,
+            )
         order, _ = Order.objects.update_or_create(
             canal_id=canal_json["id"],
             defaults={
