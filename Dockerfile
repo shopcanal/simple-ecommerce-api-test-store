@@ -6,6 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV SHOPCANAL_API_BASE_URL "https://api-develop.shopcanal.com/platform"
 ENV DB_PATH "/etc/test-api-store-db/db.sqlite3"
+ENV CANAL_API_ID "032ab4ad-6195-4017-96fa-fce01baa36c8"
+ENV CANAL_ACCESS_TOKEN = "acaae855f7cb4546bcf5defc23968c5e"
 
 # Set the working directory
 WORKDIR /app
