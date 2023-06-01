@@ -6,13 +6,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0011_auto_20230601_1903'),
+        ("core", "0011_auto_20230601_1903"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='item',
-            name='canal_variant_id',
-            field=models.CharField(blank=True, db_index=True, max_length=36, null=True, unique=True),
+            model_name="item",
+            name="canal_variant_id",
+            field=models.CharField(
+                blank=True, db_index=True, max_length=36, null=True, unique=True
+            ),
         ),
     ]

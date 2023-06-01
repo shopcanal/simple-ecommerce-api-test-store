@@ -6,33 +6,33 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0010_auto_20230530_2118'),
+        ("core", "0010_auto_20230530_2118"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='fulfillment',
-            name='canal_id',
+            model_name="fulfillment",
+            name="canal_id",
             field=models.CharField(blank=True, db_index=True, max_length=36, null=True),
         ),
         migrations.AlterField(
-            model_name='item',
-            name='canal_id',
+            model_name="item",
+            name="canal_id",
             field=models.CharField(blank=True, db_index=True, max_length=36, null=True),
         ),
         migrations.AlterField(
-            model_name='order',
-            name='canal_id',
+            model_name="order",
+            name="canal_id",
             field=models.CharField(blank=True, db_index=True, max_length=36, null=True),
         ),
         migrations.AlterField(
-            model_name='orderitem',
-            name='canal_id',
+            model_name="orderitem",
+            name="canal_id",
             field=models.CharField(blank=True, db_index=True, max_length=36, null=True),
         ),
         migrations.AlterField(
-            model_name='refund',
-            name='canal_id',
+            model_name="refund",
+            name="canal_id",
             field=models.CharField(blank=True, db_index=True, max_length=36, null=True),
         ),
     ]
