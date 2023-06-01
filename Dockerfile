@@ -5,6 +5,7 @@ FROM python:3.10-slim-buster
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV SHOPCANAL_API_BASE_URL "https://api-develop.shopcanal.com/platform"
+ENV DB_PATH "/etc/test-api-store-db/db.sqlite3"
 
 # Set the working directory
 WORKDIR /app
@@ -18,6 +19,7 @@ RUN pip install -r requirements.txt
 
 # Copy the rest of the application code into the container
 COPY . .
+COPY db.sqlite3 /etc/test-api-store-db/db.sqlite3
 
 # Expose the port the app will run on
 EXPOSE 80
