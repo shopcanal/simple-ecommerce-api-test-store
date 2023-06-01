@@ -140,3 +140,4 @@ cython_debug/
 static_root
 media_root
 .vscode
+db.sqlite3
