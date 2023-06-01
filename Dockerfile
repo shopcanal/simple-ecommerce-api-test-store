@@ -19,7 +19,7 @@ RUN pip install -r requirements.txt
 
 # Copy the rest of the application code into the container
 COPY . .
-COPY db.sqlite3 /etc/test-api-store-db/db.sqlite3
+COPY db.sqlite3 ./etc/test-api-store-db/db.sqlite3
 
 # Expose the port the app will run on
 EXPOSE 80
