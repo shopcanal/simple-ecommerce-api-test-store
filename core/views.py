@@ -1,5 +1,7 @@
+import json
 import random
 import string
+from typing import Any
 
 import stripe
 from django.conf import settings
@@ -7,6 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
@@ -22,6 +25,7 @@ from .models import (
     Coupon,
     Refund,
     UserProfile,
+    CANAL_WEBHOOK_TOPIC_MODEL,
 )
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -352,11 +356,20 @@ class OrderSummaryView(LoginRequiredMixin, View):
     def get(self, *args, **kwargs):
         try:
             order = Order.objects.get(user=self.request.user, ordered=False)
-            context = {"object": order}
-            return render(self.request, "order_summary.html", context)
         except ObjectDoesNotExist:
             messages.warning(self.request, "You do not have an active order")
             return redirect("/")
+        except Order.MultipleObjectsReturned:
+            order = (
+                Order.objects.filter(user=self.request.user, ordered=False)
+                .order_by("-created_at")
+                .first()
+            )
+            Order.objects.filter(user=self.request.user, ordered=False).exclude(
+                id=order.id
+            ).delete()
+        context = {"object": order}
+        return render(self.request, "order_summary.html", context)
 
 
 class ItemDetailView(DetailView):
@@ -496,3 +509,13 @@ class RequestRefundView(View):
             except ObjectDoesNotExist:
                 messages.info(self.request, "This order does not exist.")
                 return redirect("core:request-refund")
+
+
+class CanalWebhookView(View):
+    def post(self, *args: Any, **kwargs: Any) -> HttpResponse:
+        model = CANAL_WEBHOOK_TOPIC_MODEL[self.request.headers["X-Canal-Topic"]]
+        print(self.request.headers["X-Canal-Topic"])
+        canal_json = json.loads(self.request.body.decode())
+        print(canal_json)
+        obj = model.create_or_update_from_canal_json(canal_json=canal_json)
+        return HttpResponse({})

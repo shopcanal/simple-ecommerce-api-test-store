@@ -41,9 +41,17 @@ DEBUG_TOOLBAR_CONFIG = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+        "NAME": os.environ.get("DB_PATH", os.path.join(BASE_DIR, "db.sqlite3")),
     }
 }
 
 STRIPE_PUBLIC_KEY = config("STRIPE_TEST_PUBLIC_KEY")
 STRIPE_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY")
+
+SHOPCANAL_API_BASE_URL = os.environ.get(
+    "SHOPCANAL_API_BASE_URL", "http://localhost:8080"
+)
+CANAL_APP_ID = os.environ.get("CANAL_APP_ID", "c13012fd-fd99-458b-a89e-4bf1e4cbae03")
+CANAL_ACCESS_TOKEN = os.environ.get(
+    "CANAL_ACCESS_TOKEN", "48c0e282456c4d029978259ab765e1e8"
+)

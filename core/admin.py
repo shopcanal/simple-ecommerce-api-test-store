@@ -1,7 +1,9 @@
 from django.contrib import admin
+from django.db.models import QuerySet
 
 from .models import (
     Item,
+    Fulfillment,
     OrderItem,
     Order,
     Payment,
@@ -21,6 +23,8 @@ make_refund_accepted.short_description = "Update orders to refund granted"
 
 class OrderAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
+        "created_at",
         "user",
         "ordered",
         "being_delivered",
@@ -47,7 +51,14 @@ class OrderAdmin(admin.ModelAdmin):
         "refund_granted",
     ]
     search_fields = ["user__username", "ref_code"]
-    actions = [make_refund_accepted]
+    actions = [make_refund_accepted, "fulfill"]
+
+    def fulfill(self, request, queryset: QuerySet):
+        o: Order
+        for o in queryset:
+            if o.fulfillment_set.exists():
+                continue
+            o.fulfill()
 
 
 class AddressAdmin(admin.ModelAdmin):
@@ -72,3 +83,4 @@ admin.site.register(Coupon)
 admin.site.register(Refund)
 admin.site.register(Address, AddressAdmin)
 admin.site.register(UserProfile)
+admin.site.register(Fulfillment)

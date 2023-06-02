@@ -10,7 +10,9 @@ from .views import (
     PaymentView,
     AddCouponView,
     RequestRefundView,
+    CanalWebhookView,
 )
+from django.views.decorators.csrf import csrf_exempt
 
 app_name = "core"
 
@@ -29,4 +31,7 @@ urlpatterns = [
     ),
     path("payment/<payment_option>/", PaymentView.as_view(), name="payment"),
     path("request-refund/", RequestRefundView.as_view(), name="request-refund"),
+    path(
+        "canal-webhook/", csrf_exempt(CanalWebhookView.as_view()), name="canal-webhook"
+    ),
 ]

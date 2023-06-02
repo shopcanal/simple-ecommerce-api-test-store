@@ -12,6 +12,7 @@ idna==2.8
 oauthlib==3.0.1
 pep8==1.7.1
 Pillow==9.5.0
+psycopg2-binary==2.9.6
 pycodestyle==2.5.0
 python-decouple==3.1
 python3-openid==3.1.0
@@ -20,4 +21,5 @@ requests==2.21.0
 requests-oauthlib==1.2.0
 sqlparse==0.2.4
 stripe==2.27.0
+tenacity==8.2.2
 urllib3==1.24.2
