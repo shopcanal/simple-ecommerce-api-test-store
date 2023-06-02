@@ -20,12 +20,14 @@ This project was created almost two years ago. Since then, there is a newer vers
 
 ```bash
 
-cd /home/cschubiner/simple-ecommerce-api-test-store
-docker stop $(docker ps -a -q --filter ancestor=testecomm_bot --format="{{.ID}}")
-docker build -t "testecomm_bot" .
-docker run  --mount type=volume,src=test-api-store-db,target=/etc/test-api-store-db -p 80:80 --restart=always -d testecomm_bot 
+cd simple-ecommerce-api-test-store
+sudo docker stop $(docker ps -a -q --filter ancestor=testecomm_bot --format="{{.ID}}")
+sudo docker build -t "testecomm_bot" .
+sudo docker run  --mount type=volume,src=test-api-store-db,target=/etc/test-api-store-db -p 80:80 --restart=always -d testecomm_bot 
 
 ```
+
+Visit the store live at http://35.232.148.241/
 
 # Django E-commerce
 
